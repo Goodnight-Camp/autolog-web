@@ -13,23 +13,20 @@ import type { PhoneSession } from "./types.ts";
 
 const session: PhoneSession = {
   sessionId: "s1",
-  vehicle: { plate: "12가3456", company: "테스트" },
+  vehicle: { plate: "12가3456" },
   people: [
     { id: "u1", name: "김현대", dept: "영업" },
     { id: "u2", name: "이기아", dept: "총무" },
   ],
   trips: [
     {
-      id: 1, startedAt: "2026-11-11T23:30:00Z", endedAt: "2026-11-12T00:10:00Z",
-      distanceKm: 12.34, from: "집", to: "회사", suggested: "COMMUTE", userId: "u1", memo: null,
+      id: 1, startedAt: "2026-11-11T23:30:00Z", endedAt: "2026-11-12T00:10:00Z", userId: "u1",
     },
     {
-      id: 2, startedAt: "2026-11-12T02:00:00Z", endedAt: "2026-11-12T03:00:00Z",
-      distanceKm: 30, from: null, to: null, suggested: "UNKNOWN", userId: "ghost", memo: "메모",
+      id: 2, startedAt: "2026-11-12T02:00:00Z", endedAt: "2026-11-12T03:00:00Z", userId: "ghost",
     },
     {
-      id: 3, startedAt: "2026-11-12T05:00:00Z", endedAt: "2026-11-12T06:00:00Z",
-      distanceKm: 5, from: "회사", to: "거래처", suggested: "BUSINESS", userId: null, memo: null,
+      id: 3, startedAt: "2026-11-12T05:00:00Z", endedAt: "2026-11-12T06:00:00Z", userId: null,
     },
   ],
   expiresAt: "2026-11-12T10:00:00Z",
@@ -52,11 +49,11 @@ test("resolveApiBase: env 우선, 없으면 같은 호스트 4000", () => {
   );
 });
 
-test("initForm: 추천 목적은 미리 고르지 않음·기본 이용자·보냄 제외", () => {
+test("initForm: 목적은 미리 고르지 않음·기본 이용자·보냄 제외", () => {
   const s = initForm(session);
-  // 추천(COMMUTE)이 있어도 목적은 비워 둔다.
+  // 목적은 비워 둔다.
   assert.deepEqual(s[1], { purpose: null, userId: "u1", memo: "", include: true });
-  // people 에 없는 userId 는 null, 기존 메모는 폰에서 다루지 않음
+  // people 에 없는 userId 는 null, 메모는 폰에서 다루지 않음
   assert.deepEqual(s[2], { purpose: null, userId: null, memo: "", include: true });
   assert.equal(s[3].include, false);
   // 목적을 고르기 전에는 보낼 항목이 없다.
@@ -138,11 +135,8 @@ test("네트워크 오류는 status 0", async () => {
   );
 });
 
-test("suggested 가 null(서버 미분류)이면 목적 미선택", () => {
-  const s = initForm({
-    ...session,
-    trips: [{ ...session.trips[0], suggested: null }],
-    submittedTripIds: [],
-  });
+test("구버전 서버가 옛 필드(거리·장소·추천)를 보내도 목적은 미선택", () => {
+  const legacyTrip = { ...session.trips[0], distanceKm: 12, from: "집", to: "회사", suggested: "COMMUTE" };
+  const s = initForm({ ...session, trips: [legacyTrip], submittedTripIds: [] });
   assert.equal(s[1].purpose, null);
 });

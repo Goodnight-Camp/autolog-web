@@ -4,16 +4,7 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ApiError, adminGetSession } from "@/lib/api";
-import {
-  PURPOSE_LABEL,
-  formatDate,
-  formatDateTime,
-  formatKm,
-  formatTime,
-  routeLabel,
-  suggestedLabel,
-  suggestedPurpose,
-} from "@/lib/format";
+import { PURPOSE_LABEL, formatDate, formatDateTime, formatTime } from "@/lib/format";
 import { KeyGate } from "../../KeyGate";
 import { useAdminKey, usePolling } from "../../useAdmin";
 
@@ -107,7 +98,7 @@ export default function AdminSessionPage() {
           <dl className="kv">
             <div>
               <dt>차량</dt>
-              <dd>{data.vehicle ? `${data.vehicle.plate} · ${data.vehicle.company}` : "-"}</dd>
+              <dd>{data.vehicle?.plate ?? "-"}</dd>
             </div>
             <div>
               <dt>생성</dt>
@@ -134,16 +125,13 @@ export default function AdminSessionPage() {
                   <th className="num">ID</th>
                   <th>날짜</th>
                   <th>시각</th>
-                  <th className="num">거리</th>
-                  <th>경로</th>
-                  <th>추천 목적</th>
                   <th>차량 측 이용자</th>
                 </tr>
               </thead>
               <tbody>
                 {data.trips.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="muted" style={{ textAlign: "center" }}>
+                    <td colSpan={4} className="muted" style={{ textAlign: "center" }}>
                       운행이 없습니다.
                     </td>
                   </tr>
@@ -154,13 +142,6 @@ export default function AdminSessionPage() {
                       <td>{formatDate(t.startedAt)}</td>
                       <td>
                         {formatTime(t.startedAt)}–{formatTime(t.endedAt)}
-                      </td>
-                      <td className="num">{formatKm(t.distanceKm)}</td>
-                      <td>{routeLabel(t.from, t.to)}</td>
-                      <td>
-                        <span className={suggestedPurpose(t.suggested) ? "badge" : "badge badge-muted"}>
-                          {suggestedLabel(t.suggested)}
-                        </span>
                       </td>
                       <td>{nameOf(t.userId)}</td>
                     </tr>

@@ -60,23 +60,3 @@ export function formatDateTime(iso: string | null | undefined): string {
   return d ? dateTimeFmt.format(d) : "-";
 }
 
-/** 예: 12.345 → "12.3 km" */
-export function formatKm(km: number): string {
-  if (!Number.isFinite(km)) return "- km";
-  return `${km.toLocaleString("ko-KR", { maximumFractionDigits: 1 })} km`;
-}
-
-export function routeLabel(from: string | null, to: string | null): string {
-  return `${from?.trim() || "알 수 없음"} → ${to?.trim() || "알 수 없음"}`;
-}
-
-/** 추천 목적을 정규화한다. null·UNKNOWN·알 수 없는 값은 null. */
-export function suggestedPurpose(s: string | null | undefined): Purpose | null {
-  return (PURPOSES as readonly string[]).includes(s ?? "") ? (s as Purpose) : null;
-}
-
-/** 추천 목적 배지 문구. 예: "업무", 없으면 "미분류" */
-export function suggestedLabel(s: string | null | undefined): string {
-  const p = suggestedPurpose(s);
-  return p ? PURPOSE_LABEL[p] : PURPOSE_LABEL.UNKNOWN;
-}

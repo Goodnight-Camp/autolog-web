@@ -3,9 +3,9 @@
 export type Purpose = "COMMUTE" | "BUSINESS" | "PERSONAL";
 export type SuggestedPurpose = Purpose | "UNKNOWN";
 
+/** 세션 차량 정보. 앱은 차량번호만 보낸다. */
 export interface Vehicle {
-  plate: string;
-  company: string;
+  plate: string | null;
 }
 
 export interface Person {
@@ -14,17 +14,12 @@ export interface Person {
   dept: string;
 }
 
+/** 확인 세션의 운행: 날짜·시각과 이용자만 담는다(거리·장소·추천 목적·메모는 보내지 않음). */
 export interface Trip {
   id: number;
   startedAt: string;
   endedAt: string;
-  distanceKm: number;
-  from: string | null;
-  to: string | null;
-  /** 서버는 미분류를 null 로 저장할 수 있다(계약상 "UNKNOWN" 도 허용). */
-  suggested: SuggestedPurpose | null;
   userId: string | null;
-  memo: string | null;
 }
 
 export interface PhoneSession {
