@@ -35,6 +35,8 @@ export interface SubmissionItem {
   tripId: number;
   purpose: Purpose;
   userId: string | null;
+  /** 폰에서 직접 입력한 이용자 이름. 차량이 기존 이용자와 이름으로 맞추거나 새로 등록한다. */
+  userName: string | null;
   memo: string | null;
 }
 

@@ -5,12 +5,13 @@ import { useParams } from "next/navigation";
 import { ApiError, getSession, submitTrips } from "@/lib/api";
 import { parseHashToken } from "@/lib/token";
 import {
+  USER_NAME_MAX,
   confirmFormReducer,
   toSubmissionItems,
   type TripDraft,
 } from "@/lib/confirmForm";
 import { PURPOSES, PURPOSE_LABEL, formatDate, formatTime } from "@/lib/format";
-import type { Person, PhoneSession, Purpose, Trip } from "@/lib/types";
+import type { PhoneSession, Purpose, Trip } from "@/lib/types";
 
 type View =
   | { kind: "loading" }
@@ -156,11 +157,10 @@ export default function ConfirmPage() {
                 <TripCard
                   key={trip.id}
                   trip={trip}
-                  people={s.people}
                   draft={draft}
                   sent={submitted.has(trip.id)}
                   onPurpose={(p) => dispatch({ type: "purpose", tripId: trip.id, purpose: p })}
-                  onUser={(u) => dispatch({ type: "user", tripId: trip.id, userId: u })}
+                  onUser={(u) => dispatch({ type: "user", tripId: trip.id, userName: u })}
                   onInclude={(v) => dispatch({ type: "include", tripId: trip.id, include: v })}
                 />
               );
@@ -196,16 +196,15 @@ export default function ConfirmPage() {
 
 interface TripCardProps {
   trip: Trip;
-  people: Person[];
   draft: TripDraft;
   sent: boolean;
   onPurpose: (p: Purpose) => void;
-  onUser: (u: string | null) => void;
+  onUser: (u: string) => void;
   onInclude: (v: boolean) => void;
 }
 
-function TripCard({ trip, people, draft, sent, onPurpose, onUser, onInclude }: TripCardProps) {
-  const userSelectId = `user-${trip.id}`;
+function TripCard({ trip, draft, sent, onPurpose, onUser, onInclude }: TripCardProps) {
+  const userInputId = `user-${trip.id}`;
   const excluded = !draft.include;
   const cls = ["trip-card", sent ? "is-sent" : "", excluded ? "is-excluded" : ""].join(" ").trim();
 
@@ -235,23 +234,19 @@ function TripCard({ trip, people, draft, sent, onPurpose, onUser, onInclude }: T
         ))}
       </div>
 
-      <label className="field-label" htmlFor={userSelectId}>
+      <label className="field-label" htmlFor={userInputId}>
         이용자
       </label>
-      <select
-        id={userSelectId}
-        className="select"
-        value={draft.userId ?? ""}
-        onChange={(e) => onUser(e.target.value || null)}
-      >
-        <option value="">선택 안 함</option>
-        {people.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-            {p.dept ? ` (${p.dept})` : ""}
-          </option>
-        ))}
-      </select>
+      <input
+        id={userInputId}
+        className="input"
+        type="text"
+        autoComplete="name"
+        maxLength={USER_NAME_MAX}
+        placeholder="이름을 입력하세요"
+        value={draft.userName}
+        onChange={(e) => onUser(e.target.value)}
+      />
 
       {(sent || excluded) && (
         <div className="resend-row">
