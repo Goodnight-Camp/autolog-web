@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import TopNav from "./TopNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,9 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Link href="/" className="brand">
             Autolog
           </Link>
-          <nav className="topnav" aria-label="주 메뉴">
-            <Link href="/admin">운행기록부</Link>
-          </nav>
+          <TopNav />
         </header>
         {children}
       </body>

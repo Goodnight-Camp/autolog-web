@@ -1,4 +1,3 @@
-import { suggestedPurpose } from "./format.ts";
 import type { PhoneSession, Purpose, SubmissionItem, Trip } from "./types.ts";
 
 export const MEMO_MAX = 200;
@@ -32,9 +31,11 @@ export function initForm(session: PhoneSession): ConfirmFormState {
   const state: ConfirmFormState = {};
   for (const trip of session.trips) {
     state[trip.id] = {
-      purpose: suggestedPurpose(trip.suggested),
+      // 추천 목적은 미리 고르지 않는다. 사람이 직접 고른 목적만 보낸다.
+      purpose: null,
       userId: defaultUser(trip, session),
-      memo: (trip.memo ?? "").slice(0, MEMO_MAX),
+      // 폰 화면에서는 비고를 받지 않는다(차량 음성 비고·기록 탭에서 작성).
+      memo: "",
       include: !submitted.has(trip.id),
     };
   }

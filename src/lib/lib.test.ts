@@ -52,21 +52,24 @@ test("resolveApiBase: env 우선, 없으면 같은 호스트 4000", () => {
   );
 });
 
-test("initForm: 제안 목적·기본 이용자·보냄 제외", () => {
+test("initForm: 추천 목적은 미리 고르지 않음·기본 이용자·보냄 제외", () => {
   const s = initForm(session);
-  assert.deepEqual(s[1], { purpose: "COMMUTE", userId: "u1", memo: "", include: true });
-  // 미분류는 목적 미선택, people 에 없는 userId 는 null
-  assert.deepEqual(s[2], { purpose: null, userId: null, memo: "메모", include: true });
+  // 추천(COMMUTE)이 있어도 목적은 비워 둔다.
+  assert.deepEqual(s[1], { purpose: null, userId: "u1", memo: "", include: true });
+  // people 에 없는 userId 는 null, 기존 메모는 폰에서 다루지 않음
+  assert.deepEqual(s[2], { purpose: null, userId: null, memo: "", include: true });
   assert.equal(s[3].include, false);
-  // 목적 없는 2번, 이미 보낸 3번은 제외
-  assert.deepEqual(toSubmissionItems(s, session.trips).map((i) => i.tripId), [1]);
+  // 목적을 고르기 전에는 보낼 항목이 없다.
+  assert.deepEqual(toSubmissionItems(s, session.trips), []);
 });
 
-test("reducer: 목적 선택 시 포함, 메모 길이 제한, 재제출", () => {
+test("reducer: 직접 고른 목적만 제출, 메모 길이 제한, 재제출", () => {
   let s = initForm(session);
+  s = confirmFormReducer(s, { type: "purpose", tripId: 1, purpose: "COMMUTE" });
   s = confirmFormReducer(s, { type: "purpose", tripId: 2, purpose: "PERSONAL" });
   s = confirmFormReducer(s, { type: "memo", tripId: 1, memo: "가".repeat(300) });
   s = confirmFormReducer(s, { type: "include", tripId: 3, include: true });
+  s = confirmFormReducer(s, { type: "purpose", tripId: 3, purpose: "BUSINESS" });
   s = confirmFormReducer(s, { type: "user", tripId: 3, userId: "u2" });
   assert.equal(s[1].memo.length, MEMO_MAX);
   const items = toSubmissionItems(s, session.trips);
@@ -75,7 +78,7 @@ test("reducer: 목적 선택 시 포함, 메모 길이 제한, 재제출", () =>
     [2, "PERSONAL", null],
     [3, "BUSINESS", "u2"],
   ]);
-  assert.equal(items[1].memo, "메모");
+  assert.equal(items[1].memo, null);
   assert.equal(items[2].memo, null);
 });
 
