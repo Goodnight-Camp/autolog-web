@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+.env*.local
+.env
+npm-debug.log*
+.DS_Store
+# 디자인 설정(OmD 등)은 Goodnight-Camp/.github 레포에서 관리
+.omd/
+omd.config.*
