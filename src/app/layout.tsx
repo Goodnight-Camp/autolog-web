@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "현대 오토로그",
+  title: "Autolog",
   description: "차량 운행일지 확인 — 이용자·목적을 폰에서 확인하고 차량 장부에 반영합니다.",
   robots: { index: false, follow: false },
 };
@@ -20,8 +20,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <header className="topbar">
           <Link href="/" className="brand">
-            HYUNDAI <small>오토로그</small>
+            Autolog
           </Link>
+          <nav className="topnav" aria-label="주 메뉴">
+            <Link href="/admin">운행기록부</Link>
+          </nav>
         </header>
         {children}
       </body>

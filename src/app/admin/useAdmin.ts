@@ -44,6 +44,8 @@ export function usePolling<T>(
   key: string | null | undefined,
   fetcher: (key: string, signal: AbortSignal) => Promise<T>,
   onUnauthorized: () => void,
+  /** 바뀌면 즉시 다시 불러온다(필터 등) */
+  depsKey = "",
 ) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -84,7 +86,7 @@ export function usePolling<T>(
       ac.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [key]);
+  }, [key, depsKey]);
 
   return { data, error, updatedAt };
 }

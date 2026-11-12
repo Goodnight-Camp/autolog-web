@@ -1,9 +1,13 @@
 import type {
   AdminSessionDetail,
   AdminSessionSummary,
+  LedgerFilters,
+  LedgerResponse,
   PhoneSession,
   SubmissionItem,
+  VehicleReport,
 } from "./types.ts";
+import { fileNameFrom, ledgerQuery } from "./ledger.ts";
 
 /** HTTP 오류. status 0 은 네트워크 오류(서버에 닿지 못함)를 뜻한다. */
 export class ApiError extends Error {
@@ -145,4 +149,59 @@ export function adminGetSession(
     { headers: adminHeaders(key) },
     opts,
   );
+}
+
+/** 운행기록부(차량·운행별 최신 행) */
+export function adminLedger(
+  key: string,
+  filters: LedgerFilters,
+  opts?: RequestOptions,
+): Promise<LedgerResponse> {
+  return request(`/api/admin/trips${ledgerQuery(filters)}`, { headers: adminHeaders(key) }, opts);
+}
+
+/** 한 행의 보고 이력(최신순) */
+export function adminTripReports(
+  key: string,
+  row: { vehicleId: string; kind: string; tripId: number },
+  opts?: RequestOptions,
+): Promise<{ reports: VehicleReport[] }> {
+  const q = new URLSearchParams({ vehicleId: row.vehicleId, kind: row.kind, tripId: String(row.tripId) });
+  return request(`/api/admin/reports?${q}`, { headers: adminHeaders(key) }, opts);
+}
+
+/** 운행기록부 파일(CSV/XLSX). 관리자 키를 헤더로 보내야 하므로 링크 대신 fetch → Blob 으로 받는다. */
+export async function adminDownloadLedger(
+  key: string,
+  type: "csv" | "xlsx",
+  filters: LedgerFilters,
+  opts: RequestOptions = {},
+): Promise<{ blob: Blob; fileName: string }> {
+  const base = opts.base ?? apiBase();
+  const doFetch = opts.fetchImpl ?? fetch;
+  let res: Response;
+  try {
+    res = await doFetch(`${base}/api/admin/ledger.${type}${ledgerQuery(filters)}`, {
+      headers: adminHeaders(key),
+      cache: "no-store",
+      signal: opts.signal,
+    });
+  } catch (e) {
+    if (isAbort(e)) throw e;
+    throw new ApiError(0, "서버에 연결할 수 없어요. 네트워크를 확인해 주세요.");
+  }
+  if (!res.ok) {
+    let msg = `내려받기에 실패했어요 (${res.status})`;
+    try {
+      const body = (await res.json()) as { error?: unknown };
+      if (typeof body.error === "string" && body.error) msg = body.error;
+    } catch {
+      /* 본문 없음 */
+    }
+    throw new ApiError(res.status, msg);
+  }
+  return {
+    blob: await res.blob(),
+    fileName: fileNameFrom(res.headers.get("content-disposition"), `ledger.${type}`),
+  };
 }

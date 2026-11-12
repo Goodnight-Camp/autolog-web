@@ -56,8 +56,8 @@ export default function AdminSessionPage() {
   }
 
   const back = (
-    <Link href="/admin" className="btn btn-small">
-      ← 세션 목록
+    <Link href="/admin/sessions" className="btn btn-small">
+      ← QR 세션 목록
     </Link>
   );
 

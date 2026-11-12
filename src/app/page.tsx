@@ -36,7 +36,7 @@ export default function HomePage() {
 
       <p style={{ marginTop: 24 }}>
         <Link href="/admin" className="btn btn-small">
-          관리자 화면
+          운행기록부(관리자)
         </Link>
       </p>
     </main>

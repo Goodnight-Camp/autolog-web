@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "현대 오토로그 — QR 운행 확인 및 관리자 웹",
+  "description": "Autolog — QR 운행 확인 및 관리자 웹",
   "scripts": {
     "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
