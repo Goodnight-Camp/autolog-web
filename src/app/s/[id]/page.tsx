@@ -10,7 +10,7 @@ import {
   toSubmissionItems,
   type TripDraft,
 } from "@/lib/confirmForm";
-import { PURPOSES, PURPOSE_LABEL, formatDate, formatTime } from "@/lib/format";
+import { PURPOSES, PURPOSE_LABEL, formatDate } from "@/lib/format";
 import type { PhoneSession, Purpose, Trip } from "@/lib/types";
 
 type View =
@@ -125,13 +125,10 @@ export default function ConfirmPage() {
       <main className="container">
         <div className="center-state panel" style={{ marginTop: 24 }}>
           <div className="badge badge-ok" style={{ fontSize: 15 }}>
-            {view.accepted}건 전송 완료
+            운행 시작
           </div>
-          <h1 style={{ marginTop: 16 }}>차량으로 보냈어요</h1>
-          <p className="muted">차량이 P 상태일 때 장부에 반영됩니다.</p>
-          <button type="button" className="btn" onClick={() => setReloadKey((k) => k + 1)}>
-            운행 목록으로 돌아가기
-          </button>
+          <h1 style={{ marginTop: 16 }}>운행을 시작했어요</h1>
+          <p className="muted">출발·도착과 거리는 차량이 자동으로 기록하고, 운행이 끝나면 이 목적·이용자로 장부에 남습니다.</p>
         </div>
       </main>
     );
@@ -144,8 +141,8 @@ export default function ConfirmPage() {
     <main className="container">
       {s.trips.length === 0 ? (
         <div className="center-state panel" style={{ marginTop: 20 }}>
-          <h1>확인할 운행이 없습니다</h1>
-          <p className="muted">새 운행이 기록되면 차량 화면에 다시 QR이 나타납니다.</p>
+          <h1>시작할 운행이 없습니다</h1>
+          <p className="muted">차량 화면에서 QR을 새로고침해 주세요.</p>
         </div>
       ) : (
         <>
@@ -183,8 +180,8 @@ export default function ConfirmPage() {
                 {submitting
                   ? "보내는 중…"
                   : items.length === 0
-                    ? "보낼 운행을 선택하세요"
-                    : `${items.length}건 차량에 보내기`}
+                    ? "목적을 선택하세요"
+                    : "운행 시작"}
               </button>
             </div>
           </div>
@@ -209,11 +206,11 @@ function TripCard({ trip, draft, sent, onPurpose, onUser, onInclude }: TripCardP
   const cls = ["trip-card", sent ? "is-sent" : "", excluded ? "is-excluded" : ""].join(" ").trim();
 
   return (
-    <article className={cls} aria-label={`${formatDate(trip.startedAt)} 운행`}>
+    <article className={cls} aria-label="이번 운행">
       {/* 운행 구분용 최소 정보만 표시. 출발·도착·거리는 차량이 GPS·계기판으로 기록한다. */}
       <div className="trip-head">
         <div className="trip-when">
-          {formatDate(trip.startedAt)} {formatTime(trip.startedAt)}
+          이번 운행 · {formatDate(trip.startedAt)}
         </div>
         {sent && <span className="badge badge-ok">보냄</span>}
       </div>
