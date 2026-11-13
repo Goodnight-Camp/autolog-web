@@ -198,6 +198,12 @@ h2 {
   color: var(--ink-2);
 }
 
+.badge-navi {
+  background: var(--navy-050);
+  color: var(--navy);
+  border: 1px solid #b9c9de;
+}
+
 .badge-navy {
   background: var(--navy);
   color: var(--white);
@@ -709,4 +715,54 @@ table.data.ledger td.person {
 table.data.ledger td.remark {
   min-width: 200px;
   max-width: 320px;
+}
+
+/* 운행기록부 펼침: 내비 안내 정보 */
+.navi-detail {
+  margin-bottom: 12px;
+}
+
+.navi-detail .history-title {
+  margin-top: 0;
+}
+
+.navi-detail .history-title .sub {
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.kv.navi-kv {
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.kv.navi-kv div {
+  padding: 8px 12px;
+}
+
+.kv.navi-kv dd {
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.waypoints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 12px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+.waypoints-label {
+  color: var(--ink-2);
+  font-weight: 700;
+}
+
+.waypoints ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding-left: 18px;
 }

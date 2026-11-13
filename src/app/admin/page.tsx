@@ -13,7 +13,8 @@ import {
   monthPeriod,
   vehicleLabel,
 } from "@/lib/ledger";
-import type { LedgerFilters, LedgerRow, StatusFilter, VehicleReport } from "@/lib/types";
+import { naviItems, naviOutcome, naviTotalsLabel, placeLabel, usedNavi, wonCell } from "@/lib/navi";
+import type { LedgerFilters, LedgerRow, NaviInfo, StatusFilter, VehicleReport } from "@/lib/types";
 import { AdminNav } from "./AdminNav";
 import { KeyGate } from "./KeyGate";
 import { useAdminKey, usePolling } from "./useAdmin";
@@ -110,6 +111,7 @@ export default function LedgerPage() {
     setFilters((f) => ({ ...f, ...p }));
   };
   const totals = data?.totals;
+  const naviTotals = totals?.navi && totals.navi.trips > 0 ? totals.navi : null;
   const rows = data?.rows ?? [];
   const fiscal = vehicle?.fiscalStart && vehicle.fiscalEnd ? `${vehicle.fiscalStart} ~ ${vehicle.fiscalEnd}` : null;
 
@@ -262,6 +264,23 @@ export default function LedgerPage() {
             <dt>누락 운행</dt>
             <dd>{totals.gaps}건</dd>
           </div>
+          {naviTotals && (
+            <>
+              <div>
+                <dt>내비 사용 운행</dt>
+                <dd>
+                  {naviTotals.trips}건<span className="muted sub">{naviTotalsLabel(naviTotals)}</span>
+                </dd>
+              </div>
+              <div>
+                <dt>통행료 합계(내비 안내)</dt>
+                <dd>
+                  {wonCell(naviTotals.tollWon)}
+                  <span className="muted sub">유료 구간 {naviTotals.tollTrips}건 · 참고용(장부 외)</span>
+                </dd>
+              </div>
+            </>
+          )}
         </dl>
       )}
 
@@ -307,6 +326,9 @@ export default function LedgerPage() {
                 <th colSpan={3}>운행 내역</th>
                 <th colSpan={2}>업무용 사용거리(km)</th>
                 <th rowSpan={2}>⑩ 비고</th>
+                <th rowSpan={2} className="num" title="플레오스 내비 안내 기준 예상 통행료(국세청 서식에는 들어가지 않음)">
+                  통행료
+                </th>
                 <th rowSpan={2}>상태</th>
                 <th rowSpan={2}>마지막 보고</th>
               </tr>
@@ -323,7 +345,7 @@ export default function LedgerPage() {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="muted" style={{ textAlign: "center", padding: 32 }}>
+                  <td colSpan={12} className="muted" style={{ textAlign: "center", padding: 32 }}>
                     조건에 맞는 운행이 없습니다. 차량 앱이 운행을 마치면 자동으로 보고됩니다.
                   </td>
                 </tr>
@@ -362,9 +384,11 @@ export default function LedgerPage() {
                             {r.gap && <span className="badge badge-warn">누락 운행</span>}
                             {r.demo && <span className="badge badge-muted">DEMO</span>}
                             {r.purpose && <span className="badge">{PURPOSE_LABEL[r.purpose]}</span>}
+                            {usedNavi(r.navi) && <NaviBadge navi={r.navi} />}
                             {!r.complete && <span className="missing">누락: {r.missing.join(", ")}</span>}
                           </div>
                         </td>
+                        <td className="num nowrap">{usedNavi(r.navi) && r.navi.tollFareWon !== null ? wonCell(r.navi.tollFareWon) : "-"}</td>
                         <td>
                           <span className={STATUS_BADGE[r.status]}>{r.statusLabel}</span>
                         </td>
@@ -376,7 +400,8 @@ export default function LedgerPage() {
                       </tr>
                       {isOpen && (
                         <tr className="history-row">
-                          <td colSpan={11}>
+                          <td colSpan={12}>
+                            {usedNavi(r.navi) && <NaviDetail navi={r.navi} />}
                             {h === undefined ? (
                               <p className="muted">보고 이력을 불러오는 중…</p>
                             ) : typeof h === "string" ? (
@@ -396,9 +421,52 @@ export default function LedgerPage() {
         </div>
       )}
       <p className="muted" style={{ marginTop: 8 }}>
-        행을 누르면 그 운행의 보고 이력(종료·시동 OFF·확인·정정·재전송)이 펼쳐집니다. 사용자·차량 고정값이 비면 &lsquo;누락&rsquo;으로 표시합니다.
+        행을 누르면 그 운행의 내비 안내 정보와 보고 이력(종료·시동 OFF·확인·정정·재전송)이 펼쳐집니다. 내비 정보는 참고용이며 국세청 서식 파일에는 들어가지 않습니다(원본 데이터 CSV에는 포함). 사용자·차량 고정값이 비면 &lsquo;누락&rsquo;으로 표시합니다.
       </p>
     </main>
+  );
+}
+
+/** 표 비고 칸의 내비 배지: 도착/취소 상태를 색으로 */
+function NaviBadge({ navi }: { navi: NaviInfo }) {
+  const o = naviOutcome(navi);
+  const cls = o.tone === "ok" ? "badge badge-navi" : o.tone === "warn" ? "badge badge-warn" : "badge badge-muted";
+  const dest = placeLabel(navi.destination);
+  return (
+    <span className={cls} title={[dest ? `목적지 ${dest}` : null, o.label].filter(Boolean).join(" · ")}>
+      내비{o.tone === "warn" ? " · 취소" : ""}
+    </span>
+  );
+}
+
+/** 펼침 상세: 내비 안내 정보(값 없는 항목은 숨김) */
+function NaviDetail({ navi }: { navi: NaviInfo }) {
+  const items = naviItems(navi);
+  return (
+    <section className="navi-detail" aria-label="내비 안내 정보">
+      <h3 className="history-title">내비 안내 정보 <span className="muted sub">플레오스 내비 · 참고용(장부 외)</span></h3>
+      <dl className="kv navi-kv">
+        {items.map((it) => (
+          <div key={it.label}>
+            <dt>{it.label}</dt>
+            <dd>{it.value}</dd>
+          </div>
+        ))}
+      </dl>
+      {navi.waypoints.length > 0 && (
+        <div className="waypoints">
+          <span className="waypoints-label">경유지</span>
+          <ol>
+            {navi.waypoints.map((w, i) => (
+              <li key={i}>
+                {placeLabel(w) ?? `경유지 ${i + 1}`}{" "}
+                {w.arrived ? <span className="badge badge-ok">경유 완료</span> : <span className="badge badge-muted">미경유</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </section>
   );
 }
 
