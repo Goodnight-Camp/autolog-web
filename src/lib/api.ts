@@ -128,6 +128,24 @@ export function submitTrips(
   );
 }
 
+/** 폰: 차량 화면의 8자리 코드로 입장. 성공하면 세션 주소(#t=토큰 포함)를 돌려준다. */
+export function joinByCode(
+  code: string,
+  opts?: RequestOptions,
+): Promise<{ sessionId: string; phoneToken: string; path: string; expiresAt: string }> {
+  return request(
+    "/api/join",
+    { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code }) },
+    opts,
+  );
+}
+
+/** 입력 중인 코드를 보기 좋게: 대문자, 영문·숫자만, 4자리마다 하이픈(최대 8자). */
+export function formatJoinCode(raw: string): string {
+  const c = raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  return c.length > 4 ? `${c.slice(0, 4)}-${c.slice(4)}` : c;
+}
+
 function adminHeaders(key: string): Record<string, string> {
   return { "X-Admin-Key": key };
 }

@@ -145,3 +145,19 @@ test("구버전 서버가 옛 필드(거리·장소·추천)를 보내도 목적
   const s = initForm({ ...session, trips: [legacyTrip], submittedTripIds: [] });
   assert.equal(s[1].purpose, null);
 });
+
+test("formatJoinCode: 대문자·영숫자만·4자리 하이픈", async () => {
+  const { formatJoinCode } = await import("./api.ts");
+  assert.equal(formatJoinCode("y9hh5xck"), "Y9HH-5XCK");
+  assert.equal(formatJoinCode("Y9H"), "Y9H");
+  assert.equal(formatJoinCode("y9hh-5x ck!!zz"), "Y9HH-5XCK");
+});
+
+test("joinByCode: POST /api/join 본문", async () => {
+  const { joinByCode } = await import("./api.ts");
+  const seen: { url?: string; init?: RequestInit } = {};
+  const r = await joinByCode("Y9HH-5XCK", { base: "http://x", fetchImpl: fakeFetch(200, { sessionId: "s1", phoneToken: "t", path: "/s/s1#t=t", expiresAt: "z" }, seen) });
+  assert.equal(r.path, "/s/s1#t=t");
+  assert.equal(seen.url, "http://x/api/join");
+  assert.deepEqual(JSON.parse(String(seen.init!.body)), { code: "Y9HH-5XCK" });
+});
