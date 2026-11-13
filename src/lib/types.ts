@@ -24,6 +24,8 @@ export interface Trip {
 
 export interface PhoneSession {
   sessionId: string;
+  /** 차량 화면의 8자리 입장 코드(이전 서버는 없음) */
+  joinCode?: string | null;
   vehicle: Vehicle | null;
   people: Person[];
   trips: Trip[];

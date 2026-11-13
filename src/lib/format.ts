@@ -60,3 +60,9 @@ export function formatDateTime(iso: string | null | undefined): string {
   return d ? dateTimeFmt.format(d) : "-";
 }
 
+
+/** 예: "11월 12일 (목) 08:12" (확인 완료 화면·내 운행) */
+export function formatDateTimeShort(iso: string | null | undefined): string {
+  const d = toDate(iso);
+  return d ? `${dateFmt.format(d)} ${timeFmt.format(d)}` : "-";
+}

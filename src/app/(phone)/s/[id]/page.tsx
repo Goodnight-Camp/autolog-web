@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useParams } from "next/navigation";
 import { ApiError, getSession, submitTrips } from "@/lib/api";
@@ -10,15 +11,18 @@ import {
   toSubmissionItems,
   type TripDraft,
 } from "@/lib/confirmForm";
-import { PURPOSES, PURPOSE_LABEL, formatDate } from "@/lib/format";
+import { PURPOSES, PURPOSE_LABEL, formatDate, formatTime } from "@/lib/format";
+import { addHistory, loadProfile } from "@/lib/phoneStore";
 import type { PhoneSession, Purpose, Trip } from "@/lib/types";
+import { useProfile } from "../../usePhoneStore";
+import DoneView, { type DoneInfo } from "./DoneView";
 
 type View =
   | { kind: "loading" }
   | { kind: "expired" }
   | { kind: "error"; message: string }
   | { kind: "ready"; session: PhoneSession }
-  | { kind: "done"; accepted: number; session: PhoneSession };
+  | { kind: "done"; info: DoneInfo };
 
 function isExpiredError(e: unknown): boolean {
   return e instanceof ApiError && (e.status === 401 || e.status === 404);
@@ -33,6 +37,7 @@ export default function ConfirmPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const profile = useProfile();
 
   // 토큰은 URL 해시(#t=...)에서만 읽는다. 해시는 서버로 전송되지 않는다.
   useEffect(() => {
@@ -52,7 +57,8 @@ export default function ConfirmPage() {
     setView({ kind: "loading" });
     getSession(sessionId, token, { signal: ac.signal })
       .then((session) => {
-        dispatch({ type: "reset", session });
+        // 이용자 기본값: 이 폰에 저장한 내 이름(설정 탭), 없으면 차량의 기본 이용자
+        dispatch({ type: "reset", session, preferredName: loadProfile()?.name });
         setView({ kind: "ready", session });
       })
       .catch((e: unknown) => {
@@ -74,8 +80,26 @@ export default function ConfirmPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const res = await submitTrips(session.sessionId, token, items);
-      setView({ kind: "done", accepted: res?.accepted ?? items.length, session });
+      await submitTrips(session.sessionId, token, items);
+      const info: DoneInfo = {
+        at: new Date().toISOString(),
+        plate: session.vehicle?.plate ?? null,
+        userName: items.find((it) => it.userName)?.userName ?? null,
+        purposes: items.map((it) => it.purpose),
+        joinCode: session.joinCode ?? null,
+      };
+      // 계정이 없으므로 '내 운행' 내역은 이 폰 브라우저에만 남긴다.
+      addHistory(
+        items.map((it) => ({
+          at: info.at,
+          sessionId: session.sessionId,
+          plate: info.plate,
+          purpose: it.purpose,
+          userName: it.userName,
+          code: info.joinCode,
+        })),
+      );
+      setView({ kind: "done", info });
       window.scrollTo({ top: 0 });
     } catch (e) {
       if (isExpiredError(e)) setView({ kind: "expired" });
@@ -87,62 +111,59 @@ export default function ConfirmPage() {
 
   if (view.kind === "loading") {
     return (
-      <main className="container">
-        <div className="center-state" role="status">
-          <p className="muted">운행 정보를 불러오는 중…</p>
-        </div>
-      </main>
+      <div className="center-state" role="status">
+        <p className="muted">운행 정보를 불러오는 중…</p>
+      </div>
     );
   }
 
   if (view.kind === "expired") {
     return (
-      <main className="container">
-        <div className="center-state panel" style={{ marginTop: 24 }}>
-          <h1>QR이 만료됐어요</h1>
-          <p className="muted">차량 화면에서 QR을 다시 띄워주세요.</p>
-        </div>
-      </main>
+      <div className="center-state panel">
+        <h1>QR이 만료됐어요</h1>
+        <p className="muted">QR은 시동마다 바뀌어요. 차 화면에 지금 나온 QR을 다시 찍어 주세요.</p>
+        <Link href="/scan" className="btn btn-primary btn-block" style={{ marginTop: 12 }}>
+          QR 다시 스캔
+        </Link>
+      </div>
     );
   }
 
   if (view.kind === "error") {
     return (
-      <main className="container">
-        <div className="center-state panel" style={{ marginTop: 24 }}>
-          <h1>불러오지 못했어요</h1>
-          <p className="muted">{view.message}</p>
-          <button type="button" className="btn btn-primary" onClick={() => setReloadKey((k) => k + 1)}>
-            다시 시도
-          </button>
-        </div>
-      </main>
+      <div className="center-state panel">
+        <h1>불러오지 못했어요</h1>
+        <p className="muted">{view.message}</p>
+        <button type="button" className="btn btn-primary" onClick={() => setReloadKey((k) => k + 1)}>
+          다시 시도
+        </button>
+      </div>
     );
   }
 
   if (view.kind === "done") {
-    return (
-      <main className="container">
-        <div className="center-state panel" style={{ marginTop: 24 }}>
-          <div className="badge badge-ok" style={{ fontSize: 15 }}>
-            운행 시작
-          </div>
-          <h1 style={{ marginTop: 16 }}>운행을 시작했어요</h1>
-          <p className="muted">출발·도착과 거리는 차량이 자동으로 기록하고, 운행이 끝나면 이 목적·이용자로 장부에 남습니다.</p>
-        </div>
-      </main>
-    );
+    return <DoneView info={view.info} profile={profile} />;
   }
 
   const s = view.session;
   const submitted = new Set(s.submittedTripIds ?? []);
 
   return (
-    <main className="container">
+    <div className="declare">
+      <h1 className="phone-title">이번 운행을 확인해 주세요</h1>
+      <p className="phone-sub">목적과 이용자를 고르면 차가 이 이름으로 운행을 기록해요</p>
+
+      <dl className="info-table">
+        <div>
+          <dt>차량</dt>
+          <dd>{s.vehicle?.plate ?? "차량번호 없음"}</dd>
+        </div>
+      </dl>
+
       {s.trips.length === 0 ? (
-        <div className="center-state panel" style={{ marginTop: 20 }}>
-          <h1>시작할 운행이 없습니다</h1>
-          <p className="muted">차량 화면에서 QR을 새로고침해 주세요.</p>
+        <div className="center-state panel">
+          <h1>시작할 운행이 없어요</h1>
+          <p className="muted">차 화면에서 QR을 새로고침한 뒤 다시 찍어 주세요.</p>
         </div>
       ) : (
         <>
@@ -156,6 +177,8 @@ export default function ConfirmPage() {
                   trip={trip}
                   draft={draft}
                   sent={submitted.has(trip.id)}
+                  fromProfile={!!profile && draft.userName.trim() === profile.name}
+                  hasProfile={!!profile}
                   onPurpose={(p) => dispatch({ type: "purpose", tripId: trip.id, purpose: p })}
                   onUser={(u) => dispatch({ type: "user", tripId: trip.id, userName: u })}
                   onInclude={(v) => dispatch({ type: "include", tripId: trip.id, include: v })}
@@ -164,30 +187,28 @@ export default function ConfirmPage() {
             })}
           </div>
 
-          <div className="submit-bar">
-            <div className="submit-bar-inner">
-              {submitError && (
-                <div className="alert alert-error" role="alert" style={{ marginTop: 0 }}>
-                  {submitError}
-                </div>
-              )}
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                disabled={items.length === 0 || submitting}
-                onClick={onSubmit}
-              >
-                {submitting
-                  ? "보내는 중…"
-                  : items.length === 0
-                    ? "목적을 선택하세요"
-                    : "운행 시작"}
-              </button>
-            </div>
+          <div className="phone-actions">
+            {submitError && (
+              <div className="alert alert-error" role="alert" style={{ marginTop: 0 }}>
+                {submitError}
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              disabled={items.length === 0 || submitting}
+              onClick={onSubmit}
+            >
+              {submitting
+                ? "보내는 중…"
+                : items.length === 0
+                  ? "목적을 선택하세요"
+                  : "운행 시작"}
+            </button>
           </div>
         </>
       )}
-    </main>
+    </div>
   );
 }
 
@@ -195,12 +216,15 @@ interface TripCardProps {
   trip: Trip;
   draft: TripDraft;
   sent: boolean;
+  /** 이용자 칸이 설정에 저장한 내 이름과 같은지 */
+  fromProfile: boolean;
+  hasProfile: boolean;
   onPurpose: (p: Purpose) => void;
   onUser: (u: string) => void;
   onInclude: (v: boolean) => void;
 }
 
-function TripCard({ trip, draft, sent, onPurpose, onUser, onInclude }: TripCardProps) {
+function TripCard({ trip, draft, sent, fromProfile, hasProfile, onPurpose, onUser, onInclude }: TripCardProps) {
   const userInputId = `user-${trip.id}`;
   const excluded = !draft.include;
   const cls = ["trip-card", sent ? "is-sent" : "", excluded ? "is-excluded" : ""].join(" ").trim();
@@ -210,7 +234,7 @@ function TripCard({ trip, draft, sent, onPurpose, onUser, onInclude }: TripCardP
       {/* 운행 구분용 최소 정보만 표시. 출발·도착·거리는 차량이 GPS·계기판으로 기록한다. */}
       <div className="trip-head">
         <div className="trip-when">
-          이번 운행 · {formatDate(trip.startedAt)}
+          이번 운행 · {formatDate(trip.startedAt)} {formatTime(trip.startedAt)}
         </div>
         {sent && <span className="badge badge-ok">보냄</span>}
       </div>
@@ -244,6 +268,15 @@ function TripCard({ trip, draft, sent, onPurpose, onUser, onInclude }: TripCardP
         value={draft.userName}
         onChange={(e) => onUser(e.target.value)}
       />
+      {fromProfile ? (
+        <p className="field-help">설정에 저장한 내 이름이에요.</p>
+      ) : (
+        !hasProfile && (
+          <p className="field-help">
+            <Link href="/settings">설정</Link>에 내 이름을 저장하면 다음부터 자동으로 채워져요.
+          </p>
+        )
+      )}
 
       {(sent || excluded) && (
         <div className="resend-row">

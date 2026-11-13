@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { ApiError, formatJoinCode, joinByCode } from "@/lib/api";
 
@@ -33,25 +34,43 @@ export default function JoinCodePage() {
   }
 
   return (
-    <main className="container">
-      <form className="center-state panel" style={{ marginTop: 24 }} onSubmit={submit}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>운전자 확인 코드</h1>
-        <p className="muted">차량 화면의 QR 아래 8자리 코드를 입력하세요.</p>
+    <form className="code-entry" onSubmit={submit}>
+      <h1 className="phone-title">코드 직접 입력</h1>
+      <p className="phone-sub">차 화면의 QR 아래에 있는 8자리 코드를 입력해 주세요</p>
+
+      <div className="panel code-panel">
+        <label className="field-label" htmlFor="join-code">
+          운전자 확인 코드
+        </label>
         <input
-          aria-label="8자리 코드"
+          id="join-code"
+          className="input code-input"
           value={code}
           onChange={(e) => setCode(formatJoinCode(e.target.value))}
           inputMode="text"
           autoCapitalize="characters"
           autoComplete="one-time-code"
+          autoCorrect="off"
+          spellCheck={false}
           placeholder="XXXX-XXXX"
-          style={{ fontSize: 28, letterSpacing: 4, textAlign: "center", padding: "12px 8px", width: "100%", maxWidth: 280 }}
+          aria-describedby="join-code-help"
         />
-        {error && <p role="alert" style={{ color: "var(--danger, #b42318)" }}>{error}</p>}
-        <button type="submit" className="btn btn-primary" disabled={!ready || busy}>
-          {busy ? "확인 중…" : "확인"}
-        </button>
-      </form>
-    </main>
+        <p id="join-code-help" className="muted code-help">
+          영문 대문자와 숫자 8자리예요. 하이픈(-)은 자동으로 들어가요.
+        </p>
+        {error && (
+          <div className="alert alert-error" role="alert">
+            {error}
+          </div>
+        )}
+      </div>
+
+      <button type="submit" className="btn btn-primary btn-block" disabled={!ready || busy}>
+        {busy ? "확인 중…" : "확인"}
+      </button>
+      <Link href="/scan" className="btn-text">
+        QR로 스캔하기
+      </Link>
+    </form>
   );
 }

@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
-import TopNav from "./TopNav";
+import SiteHeader from "./SiteHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -19,12 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <body>
-        <header className="topbar">
-          <Link href="/" className="brand">
-            Autolog
-          </Link>
-          <TopNav />
-        </header>
+        <SiteHeader />
         {children}
       </body>
     </html>

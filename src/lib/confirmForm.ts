@@ -19,20 +19,22 @@ export type ConfirmFormAction =
   | { type: "user"; tripId: number; userName: string }
   | { type: "memo"; tripId: number; memo: string }
   | { type: "include"; tripId: number; include: boolean }
-  | { type: "reset"; session: PhoneSession };
+  | { type: "reset"; session: PhoneSession; preferredName?: string | null };
 
 function defaultUserName(trip: Trip, session: PhoneSession): string {
   return session.people.find((p) => p.id === trip.userId)?.name ?? "";
 }
 
-export function initForm(session: PhoneSession): ConfirmFormState {
+/** preferredName: 이 폰에 저장한 내 이름. 있으면 이용자 기본값으로 쓴다(없으면 차량의 기본 이용자). */
+export function initForm(session: PhoneSession, preferredName?: string | null): ConfirmFormState {
+  const mine = preferredName?.trim().slice(0, USER_NAME_MAX) ?? "";
   const submitted = new Set(session.submittedTripIds ?? []);
   const state: ConfirmFormState = {};
   for (const trip of session.trips) {
     state[trip.id] = {
       // 목적은 미리 고르지 않는다. 사람이 직접 고른 목적만 보낸다.
       purpose: null,
-      userName: defaultUserName(trip, session),
+      userName: mine || defaultUserName(trip, session),
       // 폰 화면에서는 비고를 받지 않는다(차량 음성 비고·기록 탭에서 작성).
       memo: "",
       include: !submitted.has(trip.id),
@@ -45,7 +47,7 @@ export function confirmFormReducer(
   state: ConfirmFormState,
   action: ConfirmFormAction,
 ): ConfirmFormState {
-  if (action.type === "reset") return initForm(action.session);
+  if (action.type === "reset") return initForm(action.session, action.preferredName);
   const cur = state[action.tripId];
   if (!cur) return state;
   let next: TripDraft;
