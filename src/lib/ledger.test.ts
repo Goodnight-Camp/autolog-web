@@ -62,6 +62,12 @@ test("내려받기: Blob과 파일 이름, 오류 메시지", async () => {
   assert.equal(await ok.blob.text(), "PK");
   assert.ok(seen.url!.includes("/api/admin/ledger.xlsx?"));
   assert.ok(!seen.url!.includes("K&") && !seen.url!.includes("key"));
+  assert.ok(!seen.url!.includes("format="));
+  await adminDownloadLedger("K", "csv", filters, { base: "http://x:4000", fetchImpl: fake(200, "x", seen), format: "raw" });
+  assert.ok(seen.url!.startsWith("http://x:4000/api/admin/ledger.csv?vehicleId="));
+  assert.ok(seen.url!.endsWith("&format=raw"));
+  await adminDownloadLedger("K", "csv", { ...filters, vehicleId: null, from: null, to: null, status: "all", includeIncomplete: true }, { base: "http://x:4000", fetchImpl: fake(200, "x", seen), format: "raw" });
+  assert.equal(seen.url, "http://x:4000/api/admin/ledger.csv?format=raw");
   await assert.rejects(
     adminDownloadLedger("K", "csv", filters, { base: "http://x:4000", fetchImpl: fake(400, JSON.stringify({ error: "차량을 선택하세요." }), seen) }),
     (e: unknown) => e instanceof ApiError && e.status === 400 && e.message === "차량을 선택하세요.",

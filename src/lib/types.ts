@@ -137,6 +137,48 @@ export interface LedgerRow {
   corrections: CorrectionEntry[];
   missing: string[];
   complete: boolean;
+  /** 플레오스 내비 파생 정보. 내비 미사용·누락 운행·이전 서버는 null 또는 없음 */
+  navi?: NaviInfo | null;
+}
+
+export interface NaviPlace {
+  name: string | null;
+  address: string | null;
+}
+
+export interface NaviWaypoint extends NaviPlace {
+  arrived: boolean;
+}
+
+/** 서버가 정규화한 trip.navi(값이 없거나 이상하면 null) */
+export interface NaviInfo {
+  used: boolean;
+  destination: NaviPlace;
+  routeOption: string | null;
+  plannedDistanceKm: number | null;
+  plannedDurationMin: number | null;
+  tollFareWon: number | null;
+  rerouteCount: number;
+  waypoints: NaviWaypoint[];
+  arrived: boolean;
+  arrivedAt: string | null;
+  naviDistanceKm: number | null;
+  naviDurationMin: number | null;
+  cancelled: boolean;
+  energyConsumptionKwh: number | null;
+  estimatedSocAtDestPct: number | null;
+  trafficStatus: string | null;
+}
+
+/** 기간 안 내비 집계 */
+export interface NaviTotals {
+  trips: number;
+  arrived: number;
+  cancelled: number;
+  /** 도착 / 내비 사용 운행(%), 내비 사용이 없으면 null */
+  arrivalRate: number | null;
+  tollWon: number;
+  tollTrips: number;
 }
 
 export interface LedgerTotals {
@@ -149,6 +191,7 @@ export interface LedgerTotals {
   incomplete: number;
   unconfirmed: number;
   gaps: number;
+  navi?: NaviTotals;
 }
 
 export interface LedgerResponse {
@@ -180,6 +223,7 @@ export interface VehicleReport {
     dept: string | null;
     memo: string | null;
     demo: boolean;
+    navi?: NaviInfo | null;
   };
   corrections: CorrectionEntry[];
   occurredAt: string;
