@@ -5,22 +5,13 @@ import { useParams } from "next/navigation";
 import { ApiError, getSession, submitTrips } from "@/lib/api";
 import { parseHashToken } from "@/lib/token";
 import {
-  MEMO_MAX,
+  USER_NAME_MAX,
   confirmFormReducer,
   toSubmissionItems,
   type TripDraft,
 } from "@/lib/confirmForm";
-import {
-  PURPOSES,
-  PURPOSE_LABEL,
-  formatDate,
-  formatKm,
-  formatTime,
-  routeLabel,
-  suggestedLabel,
-  suggestedPurpose,
-} from "@/lib/format";
-import type { Person, PhoneSession, Purpose, Trip } from "@/lib/types";
+import { PURPOSES, PURPOSE_LABEL, formatDate } from "@/lib/format";
+import type { PhoneSession, Purpose, Trip } from "@/lib/types";
 
 type View =
   | { kind: "loading" }
@@ -134,13 +125,10 @@ export default function ConfirmPage() {
       <main className="container">
         <div className="center-state panel" style={{ marginTop: 24 }}>
           <div className="badge badge-ok" style={{ fontSize: 15 }}>
-            {view.accepted}건 전송 완료
+            운행 시작
           </div>
-          <h1 style={{ marginTop: 16 }}>차량으로 보냈어요</h1>
-          <p className="muted">차량이 P 상태일 때 장부에 반영됩니다.</p>
-          <button type="button" className="btn" onClick={() => setReloadKey((k) => k + 1)}>
-            운행 목록으로 돌아가기
-          </button>
+          <h1 style={{ marginTop: 16 }}>운행을 시작했어요</h1>
+          <p className="muted">출발·도착과 거리는 차량이 자동으로 기록하고, 운행이 끝나면 이 목적·이용자로 장부에 남습니다.</p>
         </div>
       </main>
     );
@@ -151,23 +139,13 @@ export default function ConfirmPage() {
 
   return (
     <main className="container">
-      <h1>운행 확인</h1>
-      <p className="muted" style={{ margin: 0 }}>
-        {s.vehicle ? `${s.vehicle.plate} · ${s.vehicle.company}` : "차량 정보 없음"}
-        {" · 만료 "}
-        {formatTime(s.expiresAt)}
-      </p>
-
       {s.trips.length === 0 ? (
         <div className="center-state panel" style={{ marginTop: 20 }}>
-          <h1>확인할 운행이 없습니다</h1>
-          <p className="muted">새 운행이 기록되면 차량 화면에 다시 QR이 나타납니다.</p>
+          <h1>시작할 운행이 없습니다</h1>
+          <p className="muted">차량 화면에서 QR을 새로고침해 주세요.</p>
         </div>
       ) : (
         <>
-          <p className="muted" style={{ marginTop: 12 }}>
-            운행마다 목적과 이용자를 확인해 주세요. 추천 목적이 미리 선택되어 있어요.
-          </p>
           <div className="trip-list">
             {s.trips.map((trip) => {
               const draft = form[trip.id];
@@ -176,12 +154,10 @@ export default function ConfirmPage() {
                 <TripCard
                   key={trip.id}
                   trip={trip}
-                  people={s.people}
                   draft={draft}
                   sent={submitted.has(trip.id)}
                   onPurpose={(p) => dispatch({ type: "purpose", tripId: trip.id, purpose: p })}
-                  onUser={(u) => dispatch({ type: "user", tripId: trip.id, userId: u })}
-                  onMemo={(m) => dispatch({ type: "memo", tripId: trip.id, memo: m })}
+                  onUser={(u) => dispatch({ type: "user", tripId: trip.id, userName: u })}
                   onInclude={(v) => dispatch({ type: "include", tripId: trip.id, include: v })}
                 />
               );
@@ -204,8 +180,8 @@ export default function ConfirmPage() {
                 {submitting
                   ? "보내는 중…"
                   : items.length === 0
-                    ? "보낼 운행을 선택하세요"
-                    : `${items.length}건 차량에 보내기`}
+                    ? "목적을 선택하세요"
+                    : "운행 시작"}
               </button>
             </div>
           </div>
@@ -217,38 +193,27 @@ export default function ConfirmPage() {
 
 interface TripCardProps {
   trip: Trip;
-  people: Person[];
   draft: TripDraft;
   sent: boolean;
   onPurpose: (p: Purpose) => void;
-  onUser: (u: string | null) => void;
-  onMemo: (m: string) => void;
+  onUser: (u: string) => void;
   onInclude: (v: boolean) => void;
 }
 
-function TripCard({ trip, people, draft, sent, onPurpose, onUser, onMemo, onInclude }: TripCardProps) {
-  const userSelectId = `user-${trip.id}`;
-  const memoId = `memo-${trip.id}`;
+function TripCard({ trip, draft, sent, onPurpose, onUser, onInclude }: TripCardProps) {
+  const userInputId = `user-${trip.id}`;
   const excluded = !draft.include;
   const cls = ["trip-card", sent ? "is-sent" : "", excluded ? "is-excluded" : ""].join(" ").trim();
 
   return (
-    <article className={cls} aria-label={`${formatDate(trip.startedAt)} 운행`}>
+    <article className={cls} aria-label="이번 운행">
+      {/* 운행 구분용 최소 정보만 표시. 출발·도착·거리는 차량이 GPS·계기판으로 기록한다. */}
       <div className="trip-head">
-        <div>
-          <div className="trip-when">{formatDate(trip.startedAt)}</div>
-          <div className="trip-meta">
-            {formatTime(trip.startedAt)}–{formatTime(trip.endedAt)} · {formatKm(trip.distanceKm)}
-          </div>
+        <div className="trip-when">
+          이번 운행 · {formatDate(trip.startedAt)}
         </div>
-        <div className="trip-badges">
-          {sent && <span className="badge badge-ok">보냄</span>}
-          <span className={suggestedPurpose(trip.suggested) ? "badge" : "badge badge-muted"}>
-            추천 {suggestedLabel(trip.suggested)}
-          </span>
-        </div>
+        {sent && <span className="badge badge-ok">보냄</span>}
       </div>
-      <div className="trip-route">{routeLabel(trip.from, trip.to)}</div>
 
       <span className="field-label" id={`purpose-${trip.id}`}>
         목적
@@ -262,43 +227,23 @@ function TripCard({ trip, people, draft, sent, onPurpose, onUser, onMemo, onIncl
             onClick={() => onPurpose(p)}
           >
             {PURPOSE_LABEL[p]}
-            {suggestedPurpose(trip.suggested) === p && <span className="hint">추천</span>}
           </button>
         ))}
       </div>
 
-      <label className="field-label" htmlFor={userSelectId}>
+      <label className="field-label" htmlFor={userInputId}>
         이용자
       </label>
-      <select
-        id={userSelectId}
-        className="select"
-        value={draft.userId ?? ""}
-        onChange={(e) => onUser(e.target.value || null)}
-      >
-        <option value="">선택 안 함</option>
-        {people.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-            {p.dept ? ` (${p.dept})` : ""}
-          </option>
-        ))}
-      </select>
-
-      <label className="field-label" htmlFor={memoId}>
-        비고 (선택)
-      </label>
-      <textarea
-        id={memoId}
-        className="textarea"
-        maxLength={MEMO_MAX}
-        placeholder="예: 거래처 미팅"
-        value={draft.memo}
-        onChange={(e) => onMemo(e.target.value)}
+      <input
+        id={userInputId}
+        className="input"
+        type="text"
+        autoComplete="name"
+        maxLength={USER_NAME_MAX}
+        placeholder="이름을 입력하세요"
+        value={draft.userName}
+        onChange={(e) => onUser(e.target.value)}
       />
-      <div className="counter">
-        {draft.memo.length}/{MEMO_MAX}
-      </div>
 
       {(sent || excluded) && (
         <div className="resend-row">

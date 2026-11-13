@@ -4,6 +4,7 @@ import { parseHashToken } from "./token.ts";
 import { ApiError, getSession, resolveApiBase, submitTrips } from "./api.ts";
 import {
   MEMO_MAX,
+  USER_NAME_MAX,
   confirmFormReducer,
   initForm,
   toSubmissionItems,
@@ -13,23 +14,20 @@ import type { PhoneSession } from "./types.ts";
 
 const session: PhoneSession = {
   sessionId: "s1",
-  vehicle: { plate: "12가3456", company: "테스트" },
+  vehicle: { plate: "12가3456" },
   people: [
     { id: "u1", name: "김현대", dept: "영업" },
     { id: "u2", name: "이기아", dept: "총무" },
   ],
   trips: [
     {
-      id: 1, startedAt: "2026-11-11T23:30:00Z", endedAt: "2026-11-12T00:10:00Z",
-      distanceKm: 12.34, from: "집", to: "회사", suggested: "COMMUTE", userId: "u1", memo: null,
+      id: 1, startedAt: "2026-11-11T23:30:00Z", endedAt: "2026-11-12T00:10:00Z", userId: "u1",
     },
     {
-      id: 2, startedAt: "2026-11-12T02:00:00Z", endedAt: "2026-11-12T03:00:00Z",
-      distanceKm: 30, from: null, to: null, suggested: "UNKNOWN", userId: "ghost", memo: "메모",
+      id: 2, startedAt: "2026-11-12T02:00:00Z", endedAt: "2026-11-12T03:00:00Z", userId: "ghost",
     },
     {
-      id: 3, startedAt: "2026-11-12T05:00:00Z", endedAt: "2026-11-12T06:00:00Z",
-      distanceKm: 5, from: "회사", to: "거래처", suggested: "BUSINESS", userId: null, memo: null,
+      id: 3, startedAt: "2026-11-12T05:00:00Z", endedAt: "2026-11-12T06:00:00Z", userId: null,
     },
   ],
   expiresAt: "2026-11-12T10:00:00Z",
@@ -52,30 +50,37 @@ test("resolveApiBase: env 우선, 없으면 같은 호스트 4000", () => {
   );
 });
 
-test("initForm: 제안 목적·기본 이용자·보냄 제외", () => {
+test("initForm: 목적은 미리 고르지 않음·기본 이용자·보냄 제외", () => {
   const s = initForm(session);
-  assert.deepEqual(s[1], { purpose: "COMMUTE", userId: "u1", memo: "", include: true });
-  // 미분류는 목적 미선택, people 에 없는 userId 는 null
-  assert.deepEqual(s[2], { purpose: null, userId: null, memo: "메모", include: true });
+  // 목적은 비워 둔다.
+  assert.deepEqual(s[1], { purpose: null, userName: "김현대", memo: "", include: true });
+  // people 에 없는 userId 는 null, 메모는 폰에서 다루지 않음
+  assert.deepEqual(s[2], { purpose: null, userName: "", memo: "", include: true });
   assert.equal(s[3].include, false);
-  // 목적 없는 2번, 이미 보낸 3번은 제외
-  assert.deepEqual(toSubmissionItems(s, session.trips).map((i) => i.tripId), [1]);
+  // 목적을 고르기 전에는 보낼 항목이 없다.
+  assert.deepEqual(toSubmissionItems(s, session.trips), []);
 });
 
-test("reducer: 목적 선택 시 포함, 메모 길이 제한, 재제출", () => {
+test("reducer: 직접 고른 목적만 제출, 메모 길이 제한, 재제출", () => {
   let s = initForm(session);
+  s = confirmFormReducer(s, { type: "purpose", tripId: 1, purpose: "COMMUTE" });
   s = confirmFormReducer(s, { type: "purpose", tripId: 2, purpose: "PERSONAL" });
   s = confirmFormReducer(s, { type: "memo", tripId: 1, memo: "가".repeat(300) });
   s = confirmFormReducer(s, { type: "include", tripId: 3, include: true });
-  s = confirmFormReducer(s, { type: "user", tripId: 3, userId: "u2" });
+  s = confirmFormReducer(s, { type: "purpose", tripId: 3, purpose: "BUSINESS" });
+  s = confirmFormReducer(s, { type: "user", tripId: 3, userName: "  박새로이 " });
+  s = confirmFormReducer(s, { type: "user", tripId: 2, userName: "가".repeat(60) });
+  assert.equal(s[2].userName.length, USER_NAME_MAX);
+  s = confirmFormReducer(s, { type: "user", tripId: 2, userName: "   " });
   assert.equal(s[1].memo.length, MEMO_MAX);
   const items = toSubmissionItems(s, session.trips);
-  assert.deepEqual(items.map((i) => [i.tripId, i.purpose, i.userId]), [
-    [1, "COMMUTE", "u1"],
-    [2, "PERSONAL", null],
-    [3, "BUSINESS", "u2"],
+  // 이용자는 이름 텍스트로만 보낸다(공백 제거, 비우면 null → 차량에 기록된 이용자 유지).
+  assert.deepEqual(items.map((i) => [i.tripId, i.purpose, i.userId, i.userName]), [
+    [1, "COMMUTE", null, "김현대"],
+    [2, "PERSONAL", null, null],
+    [3, "BUSINESS", null, "박새로이"],
   ]);
-  assert.equal(items[1].memo, "메모");
+  assert.equal(items[1].memo, null);
   assert.equal(items[2].memo, null);
 });
 
@@ -105,7 +110,7 @@ test("getSession: 토큰은 헤더로만, URL 에 없음", async () => {
 
 test("submitTrips: 본문 형식과 400 오류 메시지", async () => {
   const seen: { url?: string; init?: RequestInit } = {};
-  const items = [{ tripId: 1, purpose: "BUSINESS" as const, userId: "u1", memo: null }];
+  const items = [{ tripId: 1, purpose: "BUSINESS" as const, userId: null, userName: "김현대", memo: null }];
   const ok = await submitTrips("s1", "T", items, {
     base: "http://x",
     fetchImpl: fakeFetch(201, { accepted: 1 }, seen),
@@ -135,11 +140,8 @@ test("네트워크 오류는 status 0", async () => {
   );
 });
 
-test("suggested 가 null(서버 미분류)이면 목적 미선택", () => {
-  const s = initForm({
-    ...session,
-    trips: [{ ...session.trips[0], suggested: null }],
-    submittedTripIds: [],
-  });
+test("구버전 서버가 옛 필드(거리·장소·추천)를 보내도 목적은 미선택", () => {
+  const legacyTrip = { ...session.trips[0], distanceKm: 12, from: "집", to: "회사", suggested: "COMMUTE" };
+  const s = initForm({ ...session, trips: [legacyTrip], submittedTripIds: [] });
   assert.equal(s[1].purpose, null);
 });

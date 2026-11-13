@@ -3,9 +3,9 @@
 export type Purpose = "COMMUTE" | "BUSINESS" | "PERSONAL";
 export type SuggestedPurpose = Purpose | "UNKNOWN";
 
+/** 세션 차량 정보. 앱은 차량번호만 보낸다. */
 export interface Vehicle {
-  plate: string;
-  company: string;
+  plate: string | null;
 }
 
 export interface Person {
@@ -14,17 +14,12 @@ export interface Person {
   dept: string;
 }
 
+/** 확인 세션의 운행: 날짜·시각과 이용자만 담는다(거리·장소·추천 목적·메모는 보내지 않음). */
 export interface Trip {
   id: number;
   startedAt: string;
   endedAt: string;
-  distanceKm: number;
-  from: string | null;
-  to: string | null;
-  /** 서버는 미분류를 null 로 저장할 수 있다(계약상 "UNKNOWN" 도 허용). */
-  suggested: SuggestedPurpose | null;
   userId: string | null;
-  memo: string | null;
 }
 
 export interface PhoneSession {
@@ -40,6 +35,8 @@ export interface SubmissionItem {
   tripId: number;
   purpose: Purpose;
   userId: string | null;
+  /** 폰에서 직접 입력한 이용자 이름. 차량이 기존 이용자와 이름으로 맞추거나 새로 등록한다. */
+  userName: string | null;
   memo: string | null;
 }
 
@@ -140,6 +137,48 @@ export interface LedgerRow {
   corrections: CorrectionEntry[];
   missing: string[];
   complete: boolean;
+  /** 플레오스 내비 파생 정보. 내비 미사용·누락 운행·이전 서버는 null 또는 없음 */
+  navi?: NaviInfo | null;
+}
+
+export interface NaviPlace {
+  name: string | null;
+  address: string | null;
+}
+
+export interface NaviWaypoint extends NaviPlace {
+  arrived: boolean;
+}
+
+/** 서버가 정규화한 trip.navi(값이 없거나 이상하면 null) */
+export interface NaviInfo {
+  used: boolean;
+  destination: NaviPlace;
+  routeOption: string | null;
+  plannedDistanceKm: number | null;
+  plannedDurationMin: number | null;
+  tollFareWon: number | null;
+  rerouteCount: number;
+  waypoints: NaviWaypoint[];
+  arrived: boolean;
+  arrivedAt: string | null;
+  naviDistanceKm: number | null;
+  naviDurationMin: number | null;
+  cancelled: boolean;
+  energyConsumptionKwh: number | null;
+  estimatedSocAtDestPct: number | null;
+  trafficStatus: string | null;
+}
+
+/** 기간 안 내비 집계 */
+export interface NaviTotals {
+  trips: number;
+  arrived: number;
+  cancelled: number;
+  /** 도착 / 내비 사용 운행(%), 내비 사용이 없으면 null */
+  arrivalRate: number | null;
+  tollWon: number;
+  tollTrips: number;
 }
 
 export interface LedgerTotals {
@@ -152,6 +191,7 @@ export interface LedgerTotals {
   incomplete: number;
   unconfirmed: number;
   gaps: number;
+  navi?: NaviTotals;
 }
 
 export interface LedgerResponse {
@@ -183,6 +223,7 @@ export interface VehicleReport {
     dept: string | null;
     memo: string | null;
     demo: boolean;
+    navi?: NaviInfo | null;
   };
   corrections: CorrectionEntry[];
   occurredAt: string;

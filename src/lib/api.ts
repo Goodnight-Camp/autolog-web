@@ -170,18 +170,23 @@ export function adminTripReports(
   return request(`/api/admin/reports?${q}`, { headers: adminHeaders(key) }, opts);
 }
 
-/** 운행기록부 파일(CSV/XLSX). 관리자 키를 헤더로 보내야 하므로 링크 대신 fetch → Blob 으로 받는다. */
+/**
+ * 운행기록부 파일(CSV/XLSX). 관리자 키를 헤더로 보내야 하므로 링크 대신 fetch → Blob 으로 받는다.
+ * format: "nts"(기본) 국세청 별지 서식 배치, "raw" 화면 필터를 적용한 관리자 원본 표.
+ */
 export async function adminDownloadLedger(
   key: string,
   type: "csv" | "xlsx",
   filters: LedgerFilters,
-  opts: RequestOptions = {},
+  opts: RequestOptions & { format?: "nts" | "raw" } = {},
 ): Promise<{ blob: Blob; fileName: string }> {
   const base = opts.base ?? apiBase();
   const doFetch = opts.fetchImpl ?? fetch;
   let res: Response;
   try {
-    res = await doFetch(`${base}/api/admin/ledger.${type}${ledgerQuery(filters)}`, {
+    const q = ledgerQuery(filters);
+    const fmt = opts.format === "raw" ? `${q ? "&" : "?"}format=raw` : "";
+    res = await doFetch(`${base}/api/admin/ledger.${type}${q}${fmt}`, {
       headers: adminHeaders(key),
       cache: "no-store",
       signal: opts.signal,
