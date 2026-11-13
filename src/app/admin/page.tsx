@@ -71,12 +71,12 @@ export default function LedgerPage() {
     }
   };
 
-  const download = async (type: "csv" | "xlsx") => {
+  const download = async (type: "csv" | "xlsx", format: "nts" | "raw" = "nts") => {
     if (!key) return;
-    setDownloading(type);
+    setDownloading(format === "raw" ? `raw-${type}` : type);
     setDownloadError(null);
     try {
-      const { blob, fileName } = await adminDownloadLedger(key, type, filters);
+      const { blob, fileName } = await adminDownloadLedger(key, type, filters, { format });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -267,14 +267,25 @@ export default function LedgerPage() {
 
       <div className="toolbar">
         <span className="muted">
-          {data ? `${data.shown}행 표시 · 합계는 기간 안 전체 ${totals?.rowCount ?? 0}행 기준(미확인·개인은 업무 거리 제외)` : ""}
+          {data
+            ? `${data.shown}행 표시 · 합계는 기간 안 전체 ${totals?.rowCount ?? 0}행 기준(미확인·개인은 업무 거리 제외) · 국세청 서식 파일에는 기간 안 모든 운행이 들어갑니다`
+            : ""}
         </span>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className="btn btn-small btn-primary" disabled={!filters.vehicleId || !!downloading} onClick={() => download("csv")}>
-            {downloading === "csv" ? "준비 중…" : "CSV 내려받기"}
+            {downloading === "csv" ? "준비 중…" : "국세청 서식 CSV"}
           </button>
           <button type="button" className="btn btn-small btn-primary" disabled={!filters.vehicleId || !!downloading} onClick={() => download("xlsx")}>
-            {downloading === "xlsx" ? "준비 중…" : "Excel(XLSX) 내려받기"}
+            {downloading === "xlsx" ? "준비 중…" : "국세청 서식 Excel(XLSX)"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-small"
+            title="화면 필터를 적용한 관리자용 원본 표(상태·보고 이력 등 내부 열 포함)"
+            disabled={!filters.vehicleId || !!downloading}
+            onClick={() => download("csv", "raw")}
+          >
+            {downloading === "raw-csv" ? "준비 중…" : "원본 데이터 CSV"}
           </button>
         </div>
       </div>
